@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Enhancement Task</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .current-image {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .current-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .task-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .task-option {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .task-option:hover {
+            border-color: #4CAF50;
+            background-color: #f0f8f0;
+        }
+        .task-option.selected {
+            border: 2px solid #4CAF50;
+            background-color: #e8f5e8;
+        }
+        .task-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .task-desc {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Select Enhancement Task</h1>
+        
+        <div class="current-image">
+            <h3>Current Image:</h3>
+            <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="Uploaded Image">
+            <p>{{ filename }}</p>
+        </div>
+        
+        <form method="post">
+            <h3>Choose an enhancement task:</h3>
+            <div class="task-options">
+                <label class="task-option">
+                    <div class="task-title">Denoising</div>
+                    <div class="task-desc">Remove noise from images while preserving details</div>
+                    <input type="radio" name="task" value="denoising" required>
+                </label>
+                
+                <label class="task-option">
+                    <div class="task-title">Super Resolution</div>
+                    <div class="task-desc">Enhance image quality and increase resolution</div>
+                    <input type="radio" name="task" value="super_resolution">
+                </label>
+                
+                <label class="task-option">
+                    <div class="task-title">Colorization</div>
+                    <div class="task-desc">Add color to black and white images</div>
+                    <input type="radio" name="task" value="colorization">
+                </label>
+                
+                <label class="task-option">
+                    <div class="task-title">Inpainting</div>
+                    <div class="task-desc">Restore missing or damaged parts of images</div>
+                    <input type="radio" name="task" value="inpainting">
+                </label>
+            </div>
+            
+            <button type="submit" class="btn">Apply Enhancement</button>
+        </form>
+        
+        <div class="back-link">
+            <a href="{{ url_for('index') }}">&larr; Choose Different Image</a>
+        </div>
+    </div>
+</body>
+</html>
