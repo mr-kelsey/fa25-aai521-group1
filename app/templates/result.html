@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhancement Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .task-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+        }
+        .image-comparison {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .image-box {
+            text-align: center;
+            margin: 10px;
+            flex: 1;
+            min-width: 300px;
+        }
+        .image-box img {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .image-label {
+            font-weight: bold;
+            margin-top: 10px;
+            color: #333;
+        }
+        .metrics {
+            background-color: #f0f8f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .action-buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .btn-container {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement Result</h1>
+        
+        <div class="task-info">
+            <h2>Applied Task: {{ task.replace('_', ' ').title() }}</h2>
+        </div>
+        
+        <div class="image-comparison">
+            <div class="image-box">
+                <img src="{{ url_for('uploaded_file', filename=original_image) }}" alt="Original Image">
+                <div class="image-label">Original Image</div>
+            </div>
+            
+            <div class="image-box">
+                <img src="{{ url_for('output_file', filename=enhanced_image) }}" alt="Enhanced Image">
+                <div class="image-label">Enhanced Image</div>
+            </div>
+        </div>
+        
+        {% if psnr is not none or ssim is not none %}
+        <div class="metrics">
+            <h3>Evaluation Metrics</h3>
+            {% if psnr is not none %}
+            <p><strong>PSNR:</strong> {{ "%.2f"|format(psnr) }} dB</p>
+            {% endif %}
+            {% if ssim is not none %}
+            <p><strong>SSIM:</strong> {{ "%.4f"|format(ssim) }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="action-buttons">
+            <div class="btn-container">
+                <a href="{{ url_for('index') }}" class="btn">Upload Another Image</a>
+            </div>
+            <div class="btn-container">
+                <a href="{{ url_for('uploaded_file', filename=original_image) }}" class="btn" download>Download Original</a>
+            </div>
+            <div class="btn-container">
+                <a href="{{ url_for('output_file', filename=enhanced_image) }}" class="btn" download>Download Enhanced</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

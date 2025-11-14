@@ -1,0 +1,10 @@
+flask
+opencv-python
+pillow
+numpy
+matplotlib
+torch
+torchvision
+transformers
+diffusers
+accelerate
