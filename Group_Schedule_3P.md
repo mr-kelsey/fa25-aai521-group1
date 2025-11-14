@@ -24,11 +24,11 @@ This schedule outlines weekly tasks for a three-person team working on the image
 
 \*\*Assignments\*\*
 
-\- Person A: Draft initial README and repo structure  
+\- Person A: Draft initial README and repo structure  ️✅
 
-\- Person B: Research Hugging Face models and shortlist datasets  
+\- Person B: Research Hugging Face models and shortlist datasets  ️✅
 
-\- Person C: Create degraded image variants and organize dataset folders
+\- Person C: Create degraded image variants and organize dataset folders  ️✅
 
 
 
@@ -52,7 +52,7 @@ This schedule outlines weekly tasks for a three-person team working on the image
 
 \- Person B: Super-resolution notebook and evaluation  
 
-\- Person C: Shared preprocessing and visualization utilities for both models
+\- Person C: Shared preprocessing and visualization utilities for both models  ️✅
 
 
 
@@ -76,7 +76,7 @@ This schedule outlines weekly tasks for a three-person team working on the image
 
 \- Person B: Inpainting notebook and testing  
 
-\- Person C: Evaluation metrics (PSNR, SSIM, LPIPS) and visual comparison plots
+\- Person C: Evaluation metrics (PSNR, SSIM, LPIPS) and visual comparison plots 
 
 
 
@@ -102,7 +102,7 @@ This schedule outlines weekly tasks for a three-person team working on the image
 
 \- Person B: Backend integration of all models  
 
-\- Person C: Pipeline orchestration, sample image prep, and testing harness
+\- Person C: Pipeline orchestration, sample image prep, and testing harness 
 
 
 
@@ -128,7 +128,7 @@ This schedule outlines weekly tasks for a three-person team working on the image
 
 \- Person B: Video recording, editing, and slide visuals  
 
-\- Person C: Final README, code cleanup, and peer review coordination
+\- Person C: Final README, code cleanup, and peer review coordination 
 
 
 

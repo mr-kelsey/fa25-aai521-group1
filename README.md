@@ -2,7 +2,7 @@
 
 This project is a part of the AAI-521 course in the Applied Artificial Intelligence Program at the University of San Diego (USD).
 
--- Project Status: [Active, Completed]
+-- Project Status: [**Active**, Completed]
 
 ## Overview
 
@@ -51,12 +51,14 @@ Our application addresses the growing need for high-quality image processing in 
 
 ## Partner(s)/Contributor(s)
 
+* Atul Aneja
+* [https://github.com/AtulAneja](https://github.com/AtulAneja)
+* Gregory Bauer
+* [https://github.com/gbauer-at-sandiego-edu](https://github.com/gbauer-at-sandiego-edu)
 * Johnathan Kelsey
 * [https://github.com/mr-kelsey](https://github.com/mr-kelsey)
-* Gregory Bauer
-* [Gregory_github_account]
-* Atul Aneja
-* [Atul_github_account]
+* Joel Dievendorf
+* [https://github.com/joeldiev](https://github.com/joeldiev)
 
 ## Methods Used
 * Inferential Statistics
@@ -64,7 +66,6 @@ Our application addresses the growing need for high-quality image processing in 
 * Computer Vision
 * Machine Learning
 * Deep Learning
-* Ethics for AI
 * Data Visualization
 * Data Manipulation
 * Generative Modeling
