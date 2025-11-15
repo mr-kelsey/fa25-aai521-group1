@@ -178,13 +178,13 @@
             <h1>Select Enhancement Task</h1>
             <button id="theme-toggle" class="btn" style="margin: 0; padding: 8px 16px;">Toggle Dark Mode</button>
         </div>
-        
+
         <div class="current-image">
             <h3>Current Image:</h3>
             <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="Uploaded Image">
             <p>{{ filename }}</p>
         </div>
-        
+
         <form method="post">
             <h3>Choose an enhancement task:</h3>
             <div class="task-options">
@@ -212,14 +212,14 @@
                     <input type="radio" name="task" value="inpainting">
                 </label>
             </div>
-            
+
             <button type="submit" class="btn" id="enhance-btn">Apply Enhancement</button>
             <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
                 <div style="display: inline-block; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p>Processing your image, please wait...</p>
             </div>
         </form>
-        
+
         <div class="back-link">
             <a href="{{ url_for('index') }}">&larr; Choose Different Image</a>
         </div>

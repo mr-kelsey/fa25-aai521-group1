@@ -167,23 +167,23 @@
             <h1>Enhancement Result</h1>
             <button id="theme-toggle" class="btn" style="margin: 0; padding: 8px 16px;">Toggle Dark Mode</button>
         </div>
-        
+
         <div class="task-info">
             <h2>Applied Task: {{ task.replace('_', ' ').title() }}</h2>
         </div>
-        
+
         <div class="image-comparison">
             <div class="image-box">
                 <img src="{{ url_for('uploaded_file', filename=original_image) }}" alt="Original Image">
                 <div class="image-label">Original Image</div>
             </div>
-            
+
             <div class="image-box">
                 <img src="{{ url_for('output_file', filename=enhanced_image) }}" alt="Enhanced Image">
                 <div class="image-label">Enhanced Image</div>
             </div>
         </div>
-        
+
         {% if psnr is not none or ssim is not none %}
         <div class="metrics">
             <h3>Evaluation Metrics</h3>
@@ -195,7 +195,7 @@
             {% endif %}
         </div>
         {% endif %}
-        
+
         <div class="action-buttons">
             <div class="btn-container">
                 <a href="{{ url_for('index') }}" class="btn">Upload Another Image</a>

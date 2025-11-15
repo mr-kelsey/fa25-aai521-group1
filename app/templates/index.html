@@ -297,7 +297,7 @@
                 document.getElementById('browse-btn').textContent = 'Change File';
             }
         }
-        
+
         // Check for saved theme preference or respect OS preference
         const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         if (currentTheme === 'dark') {
