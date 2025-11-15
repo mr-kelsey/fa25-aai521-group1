@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Enhancement Task</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .current-image {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .current-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .task-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .task-option {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .task-option:hover {
+            border-color: #4CAF50;
+            background-color: #f0f8f0;
+        }
+        .task-option.selected {
+            border: 2px solid #4CAF50;
+            background-color: #e8f5e8;
+        }
+        .task-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .task-desc {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .container {
+            background-color: #2d2d2d;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode h1 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .current-image img {
+            border-color: #555;
+        }
+
+        body.dark-mode .task-option {
+            border-color: #555;
+            background-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .task-option:hover {
+            border-color: #4CAF50;
+            background-color: #3a4f3a;
+        }
+
+        body.dark-mode .task-title {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .task-desc {
+            color: #aaa;
+        }
+
+        body.dark-mode .back-link a {
+            color: #4CAF50;
+        }
+
+        /* Dark mode button style */
+        body.dark-mode .btn {
+            background-color: #45a049;
+        }
+        body.dark-mode .btn:hover {
+            background-color: #3d8b40;
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Dark mode tooltip */
+        body.dark-mode .tooltip .tooltiptext {
+            background-color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>Select Enhancement Task</h1>
+            <button id="theme-toggle" class="btn" style="margin: 0; padding: 8px 16px;">Toggle Dark Mode</button>
+        </div>
+        
+        <div class="current-image">
+            <h3>Current Image:</h3>
+            <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="Uploaded Image">
+            <p>{{ filename }}</p>
+        </div>
+        
+        <form method="post">
+            <h3>Choose an enhancement task:</h3>
+            <div class="task-options">
+                <label class="task-option">
+                    <div class="task-title">Denoising <span class="tooltip">ℹ️<span class="tooltiptext">Remove noise from images while preserving details. Uses diffusion models for high-quality denoising.</span></span></div>
+                    <div class="task-desc">Remove noise from images while preserving details</div>
+                    <input type="radio" name="task" value="denoising" required>
+                </label>
+
+                <label class="task-option">
+                    <div class="task-title">Super Resolution <span class="tooltip">ℹ️<span class="tooltiptext">Enhance image quality and increase resolution using transformer-based models.</span></span></div>
+                    <div class="task-desc">Enhance image quality and increase resolution</div>
+                    <input type="radio" name="task" value="super_resolution">
+                </label>
+
+                <label class="task-option">
+                    <div class="task-title">Colorization <span class="tooltip">ℹ️<span class="tooltiptext">Add color to black and white images using neural networks trained on color mapping.</span></span></div>
+                    <div class="task-desc">Add color to black and white images</div>
+                    <input type="radio" name="task" value="colorization">
+                </label>
+
+                <label class="task-option">
+                    <div class="task-title">Inpainting <span class="tooltip">ℹ️<span class="tooltiptext">Restore missing or damaged parts of images using advanced inpainting algorithms.</span></span></div>
+                    <div class="task-desc">Restore missing or damaged parts of images</div>
+                    <input type="radio" name="task" value="inpainting">
+                </label>
+            </div>
+            
+            <button type="submit" class="btn" id="enhance-btn">Apply Enhancement</button>
+            <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
+                <div style="display: inline-block; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p>Processing your image, please wait...</p>
+            </div>
+        </form>
+        
+        <div class="back-link">
+            <a href="{{ url_for('index') }}">&larr; Choose Different Image</a>
+        </div>
+    </div>
+
+    <script>
+        // Check for saved theme preference or respect OS preference
+        const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+
+            // Save the current theme preference
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+
+            // Update button text
+            themeToggle.textContent = isDarkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode';
+        });
+
+        // Loading animation functionality
+        const enhanceBtn = document.getElementById('enhance-btn');
+        const loadingDiv = document.getElementById('loading');
+        const taskForm = document.querySelector('form');
+
+        if (taskForm) {
+            taskForm.addEventListener('submit', function() {
+                // Show loading indicator
+                loadingDiv.style.display = 'block';
+                // Disable the button to prevent multiple submissions
+                enhanceBtn.disabled = true;
+                enhanceBtn.textContent = 'Processing...';
+            });
+        }
+    </script>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>

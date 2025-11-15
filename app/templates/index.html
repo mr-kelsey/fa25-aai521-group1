@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Enhancement App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .upload-form {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .file-input {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-input:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .container {
+            background-color: #2d2d2d;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode h1 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .file-input {
+            background-color: #3a3a3a;
+            border-color: #555;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .file-input:hover {
+            background-color: #444;
+        }
+
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        /* Dark mode button style */
+        body.dark-mode .btn {
+            background-color: #45a049;
+        }
+        body.dark-mode .btn:hover {
+            background-color: #3d8b40;
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Dark mode tooltip */
+        body.dark-mode .tooltip .tooltiptext {
+            background-color: #777;
+        }
+        .task-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .task-option {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .task-option:hover {
+            border-color: #4CAF50;
+        }
+        .task-option.selected {
+            border: 2px solid #4CAF50;
+            background-color: #f0f8f0;
+        }
+        .image-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .image-box {
+            text-align: center;
+            margin: 10px;
+        }
+        .image-box img {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .metrics {
+            background-color: #f0f8f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .error {
+            color: red;
+            text-align: center;
+        }
+        .success {
+            color: green;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>AI-Powered Image Enhancement</h1>
+            <button id="theme-toggle" class="btn" style="margin: 0; padding: 8px 16px;">Toggle Dark Mode</button>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="error">
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="upload-form">
+            <h2>Upload an Image <span class="tooltip">ℹ️<span class="tooltiptext">Supported formats: PNG, JPG, JPEG, GIF, BMP. Max file size: 16MB</span></span></h2>
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                <div class="file-input" id="drop-zone">
+                    <p id="drop-text">Drag & drop your image here or click to browse</p>
+                    <p id="selected-file" style="display: none;">Selected file: <span id="filename-display"></span></p>
+                    <input type="file" name="file" accept="image/*" required id="file-input" style="display: none;">
+                    <button type="button" class="btn" id="browse-btn">Browse Files</button>
+                </div>
+                <button type="submit" class="btn" id="upload-btn">Upload Image</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Drag and drop functionality
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadForm = document.getElementById('upload-form');
+
+        // Click on the browse button to open file dialog
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Update browse button click handler to handle both Browse and Change actions
+        document.getElementById('browse-btn').addEventListener('click', () => {
+            // Reset the file input
+            fileInput.value = '';
+            // Show the original text and hide the selected file text
+            document.getElementById('drop-text').style.display = 'block';
+            document.getElementById('selected-file').style.display = 'none';
+            document.getElementById('filename-display').textContent = '';
+            document.getElementById('browse-btn').textContent = 'Browse Files';
+            // Show the file input dialog
+            fileInput.click();
+        });
+
+        // Click on the drop zone to open file dialog
+        dropZone.addEventListener('click', (e) => {
+            if (e.target !== browseBtn && e.target !== uploadBtn && e.target !== fileInput) {
+                fileInput.click();
+            }
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                // Show the selected file name
+                document.getElementById('drop-text').style.display = 'none';
+                document.getElementById('selected-file').style.display = 'block';
+                document.getElementById('filename-display').textContent = fileInput.files[0].name;
+                document.getElementById('browse-btn').textContent = 'Change File';
+            }
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.style.borderColor = '#4CAF50';
+            dropZone.style.backgroundColor = '#e8f5e8';
+        }
+
+        function unhighlight(e) {
+            dropZone.style.borderColor = '#ccc';
+            dropZone.style.backgroundColor = '#f9f9f9';
+        }
+
+        // Handle dropped file
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length) {
+                // Create a new FileList with the dropped files and assign it to the input
+                const dataTransfer = new DataTransfer();
+                for (let i = 0; i < files.length; i++) {
+                    dataTransfer.items.add(files[i]);
+                }
+                fileInput.files = dataTransfer.files;
+
+                // Show the selected file name
+                document.getElementById('drop-text').style.display = 'none';
+                document.getElementById('selected-file').style.display = 'block';
+                document.getElementById('filename-display').textContent = files[0].name;
+                document.getElementById('browse-btn').textContent = 'Change File';
+            }
+        }
+        
+        // Check for saved theme preference or respect OS preference
+        const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+
+            // Save the current theme preference
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+
+            // Update button text
+            themeToggle.textContent = isDarkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode';
+        });
+    </script>
+</body>
+</html>
