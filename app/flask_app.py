@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, flash, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for, flash, send_from_directory, session
 from werkzeug.utils import secure_filename
 import os
 from pathlib import Path
@@ -74,9 +74,14 @@ app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_csrf_protection'
 app.debug = True  # Enable debug mode to see print statements in console
 
+import tempfile
+import secrets
+from datetime import datetime
+
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
+TEMP_FOLDER_PREFIX = 'session_temp'  # Will be used to create session-specific temp folders
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
 
@@ -84,9 +89,43 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-# Create upload and output directories if they don't exist
+# Create upload, output, and session temp directories if they don't exist
 Path(UPLOAD_FOLDER).mkdir(exist_ok=True)
 Path(OUTPUT_FOLDER).mkdir(exist_ok=True)
+Path(TEMP_FOLDER_PREFIX).mkdir(exist_ok=True)
+
+def get_session_temp_folder():
+    """Get or create a session-specific temporary folder"""
+    # Clean up old session directories periodically
+    cleanup_old_session_dirs()
+
+    # Use Flask's session to maintain session-specific temp folder
+    session_id = session.get('session_id')
+    if not session_id:
+        session_id = secrets.token_hex(8)
+        session['session_id'] = session_id
+
+    temp_dir = os.path.join(TEMP_FOLDER_PREFIX, session_id)
+    Path(temp_dir).mkdir(parents=True, exist_ok=True)
+
+    return temp_dir
+
+def cleanup_old_session_dirs():
+    """Clean up session directories that are older than a certain time"""
+    import time
+    current_time = time.time()
+    # Keep session directories for up to 1 hour (3600 seconds)
+    max_age = 3600
+
+    for session_dir in os.listdir(TEMP_FOLDER_PREFIX):
+        session_path = os.path.join(TEMP_FOLDER_PREFIX, session_dir)
+        if os.path.isdir(session_path):
+            # Get the directory's modification time
+            dir_time = os.path.getmtime(session_path)
+            if current_time - dir_time > max_age:
+                # Remove the old session directory
+                import shutil
+                shutil.rmtree(session_path)
 
 def allowed_file(filename):
     """Check if uploaded file has allowed extension"""
@@ -276,7 +315,16 @@ def enhance_image(img_path, task_type):
 @app.route('/')
 def index():
     """Home page with file upload form"""
-    return render_template('index.html')
+    # Get session uploads if any exist
+    session_temp_folder = get_session_temp_folder()
+    session_files = []
+
+    if os.path.exists(session_temp_folder):
+        for filename in os.listdir(session_temp_folder):
+            if allowed_file(filename):
+                session_files.append(filename)
+
+    return render_template('index.html', session_files=session_files)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
@@ -318,8 +366,24 @@ def upload_file():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             unique_filename = str(uuid.uuid4()) + "_" + filename
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-            file.save(filepath)
+
+            # Save to the main upload folder
+            main_filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(main_filepath)
+
+            # Also save to session temp folder
+            session_temp_folder = get_session_temp_folder()
+            session_filepath = os.path.join(session_temp_folder, unique_filename)
+
+            # Copy the file to the session temp folder
+            with open(main_filepath, 'rb') as src:
+                with open(session_filepath, 'wb') as dst:
+                    dst.write(src.read())
+
+            # Verify that files exist before redirecting
+            if not os.path.exists(main_filepath):
+                flash('Error saving file to main upload directory')
+                return redirect(request.url)
 
             # Redirect to task selection page
             return redirect(url_for('select_task', filename=unique_filename))
@@ -329,43 +393,181 @@ def upload_file():
 
     return redirect(url_for('index'))
 
+def apply_enhancements_sequentially(img_path, task_list):
+    """Apply multiple enhancement tasks in sequence"""
+    current_img_path = img_path
+    all_metrics = []
+
+    # Define a preferred order of operations for better results
+    task_order = ['denoising', 'super_resolution', 'colorization', 'inpainting']
+    ordered_tasks = sorted(task_list, key=lambda x: task_order.index(x) if x in task_order else len(task_order))
+
+    # Load original image to compare metrics against
+    original_image = None
+    if cv2 is not None:
+        original_image = cv2.imread(img_path)
+    else:
+        try:
+            pil_image = Image.open(img_path)
+            original_image = np.array(pil_image)
+        except Exception:
+            pass
+
+    for task_type in ordered_tasks:
+        try:
+            # Apply the enhancement to the current image
+            output_path, psnr_val, ssim_val = enhance_image(current_img_path, task_type)
+
+            # Calculate metrics between original and current enhancement if original is available
+            # If we don't get metrics from the enhancement function (like with non-denoising tasks)
+            if psnr_val is None and ssim_val is None and original_image is not None:
+                if cv2 is not None:
+                    current_enhanced = cv2.imread(output_path)
+                else:
+                    try:
+                        pil_image = Image.open(output_path)
+                        current_enhanced = np.array(pil_image)
+                    except Exception:
+                        current_enhanced = None
+
+                if current_enhanced is not None:
+                    psnr_val = calculate_psnr(original_image, current_enhanced)
+                    ssim_val = calculate_ssim(original_image, current_enhanced)
+
+            all_metrics.append((task_type, psnr_val, ssim_val))
+
+            # Use the output of this enhancement as input for the next one
+            current_img_path = output_path
+        except Exception as e:
+            print(f"Error processing task {task_type}: {str(e)}")
+            # Continue with subsequent tasks if one fails
+            all_metrics.append((task_type, None, None))
+            continue
+
+    return current_img_path, all_metrics
+
 @app.route('/task/<filename>', methods=['GET', 'POST'])
 def select_task(filename):
-    """Select enhancement task for the uploaded image"""
+    """Select enhancement task(s) for the uploaded image"""
     if request.method == 'POST':
-        task_type = request.form.get('task')
-        if task_type:
+        # Get list of selected tasks (changed from single task to multiple tasks)
+        task_list = request.form.getlist('tasks')
+
+        if task_list:  # If any tasks were selected
             try:
-                # Apply selected enhancement
-                output_path, psnr_val, ssim_val = enhance_image(
-                    os.path.join(app.config['UPLOAD_FOLDER'], filename), 
-                    task_type
-                )
-                
-                # Extract just the filename from the path
-                output_filename = os.path.basename(output_path)
-                
-                return render_template('result.html', 
-                                     original_image=filename,
-                                     enhanced_image=output_filename,
-                                     task=task_type,
-                                     psnr=psnr_val,
-                                     ssim=ssim_val)
+                if len(task_list) == 1:
+                    # Apply single enhancement (original behavior)
+                    output_path, psnr_val, ssim_val = enhance_image(
+                        os.path.join(app.config['UPLOAD_FOLDER'], filename),
+                        task_list[0]
+                    )
+
+                    # Extract just the filename from the path
+                    output_filename = os.path.basename(output_path)
+
+                    return render_template('result.html',
+                                         original_image=filename,
+                                         enhanced_image=output_filename,
+                                         task=task_list[0],
+                                         psnr=psnr_val,
+                                         ssim=ssim_val)
+                else:
+                    # For multiple tasks, use the first task as original and apply all sequentially
+                    original_img_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                    # Apply multiple enhancements in sequence
+                    output_path, all_metrics = apply_enhancements_sequentially(
+                        original_img_path,
+                        task_list
+                    )
+
+                    # Extract just the filename from the path
+                    output_filename = os.path.basename(output_path)
+
+                    return render_template('result.html',
+                                         original_image=filename,
+                                         enhanced_image=output_filename,
+                                         task=task_list,  # Pass the list of tasks
+                                         all_metrics=all_metrics)  # Pass all metrics
             except Exception as e:
                 flash(f'Error processing image: {str(e)}')
                 return redirect(url_for('upload_file'))
-    
+
     return render_template('task_selection.html', filename=filename)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     """Serve uploaded files"""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    import logging
+
+    # First check in the main upload folder
+    main_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(main_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+    # If not found in main folder, check session temp folders
+    if os.path.exists(TEMP_FOLDER_PREFIX):
+        for session_dir in os.listdir(TEMP_FOLDER_PREFIX):
+            session_path = os.path.join(TEMP_FOLDER_PREFIX, session_dir, filename)
+            if os.path.exists(session_path):
+                return send_from_directory(os.path.join(TEMP_FOLDER_PREFIX, session_dir), filename)
+
+    # Try to find a file with similar name (in case of modifications during processing)
+    # Check main upload folder for files that start with the filename or contain it
+    for file in os.listdir(app.config['UPLOAD_FOLDER']):
+        if filename in file or file.startswith(filename.split('.')[0]):
+            return send_from_directory(app.config['UPLOAD_FOLDER'], file)
+
+    # Check session temp folders for similar files
+    if os.path.exists(TEMP_FOLDER_PREFIX):
+        for session_dir in os.listdir(TEMP_FOLDER_PREFIX):
+            session_dir_path = os.path.join(TEMP_FOLDER_PREFIX, session_dir)
+            if os.path.isdir(session_dir_path):
+                for file in os.listdir(session_dir_path):
+                    if filename in file or file.startswith(filename.split('.')[0]):
+                        return send_from_directory(session_dir_path, file)
+
+    # If file not found in any location, return 404
+    logging.warning(f"File not found: {filename} in any upload location")
+    from flask import abort
+    abort(404)
 
 @app.route('/outputs/<filename>')
 def output_file(filename):
     """Serve output files"""
-    return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
+    import logging
+
+    # First check in the main output folder
+    main_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
+    if os.path.exists(main_path):
+        return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
+
+    # If not found in main folder, check session temp folders for output files
+    if os.path.exists(TEMP_FOLDER_PREFIX):
+        for session_dir in os.listdir(TEMP_FOLDER_PREFIX):
+            session_path = os.path.join(TEMP_FOLDER_PREFIX, session_dir, filename)
+            if os.path.exists(session_path):
+                return send_from_directory(os.path.join(TEMP_FOLDER_PREFIX, session_dir), filename)
+
+    # Try to find a file with similar name (in case of modifications during processing)
+    # Check main output folder for files that start with the filename or contain it
+    for file in os.listdir(app.config['OUTPUT_FOLDER']):
+        if filename in file or file.startswith(filename.split('.')[0]):
+            return send_from_directory(app.config['OUTPUT_FOLDER'], file)
+
+    # Check session temp folders for similar files
+    if os.path.exists(TEMP_FOLDER_PREFIX):
+        for session_dir in os.listdir(TEMP_FOLDER_PREFIX):
+            session_dir_path = os.path.join(TEMP_FOLDER_PREFIX, session_dir)
+            if os.path.isdir(session_dir_path):
+                for file in os.listdir(session_dir_path):
+                    if filename in file or file.startswith(filename.split('.')[0]):
+                        return send_from_directory(session_dir_path, file)
+
+    # If file not found in any location, return 404
+    logging.warning(f"Output file not found: {filename} in any output location")
+    from flask import abort
+    abort(404)
 
 if __name__ == '__main__':
     app.run(debug=True)

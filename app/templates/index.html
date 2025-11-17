@@ -201,6 +201,20 @@
                 <button type="submit" class="btn" id="upload-btn">Upload Image</button>
             </form>
         </div>
+
+        {% if session_files %}
+        <div class="session-images">
+            <h2>Session Images</h2>
+            <div class="image-gallery">
+                {% for filename in session_files %}
+                <div class="image-item">
+                    <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="{{ filename }}" style="max-width: 150px; max-height: 150px; cursor: pointer;" onclick="selectSessionFile('{{ filename }}')">
+                    <p class="filename">{{ filename[:20] }}{% if filename|length > 20 %}...{% endif %}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <script>
@@ -316,6 +330,80 @@
             // Update button text
             themeToggle.textContent = isDarkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode';
         });
+
+        // Function to select a file from the session uploads
+        function selectSessionFile(filename) {
+            // Create a hidden form to submit the selected session file
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/task/' + encodeURIComponent(filename);
+            form.style.display = 'none';
+
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
+
+    <style>
+        .session-images {
+            margin-top: 30px;
+        }
+
+        .session-images h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .image-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .image-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        body.dark-mode .image-item:hover {
+            background-color: #444;
+        }
+
+        .filename {
+            margin: 5px 0 0 0;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        body.dark-mode .filename {
+            color: #f0f0f0;
+        }
+
+        /* Dark mode adjustments for session images */
+        body.dark-mode .session-images h2 {
+            color: #f0f0f0;
+        }
+
+        /* Dark mode for upload form */
+        body.dark-mode .upload-form {
+            color: #f0f0f0;
+        }
+
+        /* Dark mode for error messages */
+        body.dark-mode .error {
+            color: #ff6666;
+        }
+
+        body.dark-mode .success {
+            color: #66ff66;
+        }
+    </style>
 </body>
 </html>

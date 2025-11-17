@@ -59,6 +59,25 @@
             margin: 20px 0;
             text-align: center;
         }
+
+        .metrics-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #e8f5e8;
+            border-radius: 4px;
+        }
+
+        .info-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .info-section h3 {
+            margin-top: 0;
+        }
         .btn {
             display: inline-block;
             background-color: #4CAF50;
@@ -158,6 +177,38 @@
         /* Dark mode for info section */
         body.dark-mode .info-section {
             background-color: #3a4f63;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .info-section h3 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .info-section p {
+            color: #f0f0f0;
+        }
+
+        /* Dark mode for metrics items */
+        body.dark-mode .metrics-item {
+            background-color: #2a4d3a;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .metrics-item h4 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .metrics-item p {
+            color: #f0f0f0;
+        }
+
+        /* Dark mode for action buttons */
+        body.dark-mode .action-buttons {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .btn-container {
+            color: #f0f0f0;
         }
     </style>
 </head>
@@ -169,7 +220,15 @@
         </div>
 
         <div class="task-info">
-            <h2>Applied Task: {{ task.replace('_', ' ').title() }}</h2>
+            {% if task is string %}
+                <h2>Applied Task: {{ task.replace('_', ' ').title() }}</h2>
+            {% else %}
+                <h2>Applied Tasks:
+                    {% for t in task %}
+                        {{ t.replace('_', ' ').title() }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </h2>
+            {% endif %}
         </div>
 
         <div class="image-comparison">
@@ -184,14 +243,28 @@
             </div>
         </div>
 
-        {% if psnr is not none or ssim is not none %}
+        {% if psnr is not none or ssim is not none or all_metrics %}
         <div class="metrics">
             <h3>Evaluation Metrics</h3>
-            {% if psnr is not none %}
-            <p><strong>PSNR:</strong> {{ "%.2f"|format(psnr) }} dB</p>
-            {% endif %}
-            {% if ssim is not none %}
-            <p><strong>SSIM:</strong> {{ "%.4f"|format(ssim) }}</p>
+            {% if all_metrics %}
+                {% for task_type, psnr_val, ssim_val in all_metrics %}
+                    <div class="metrics-item">
+                        <h4>{{ task_type.replace('_', ' ').title() }}</h4>
+                        {% if psnr_val is not none %}
+                            <p><strong>PSNR:</strong> {{ "%.2f"|format(psnr_val) }} dB</p>
+                        {% endif %}
+                        {% if ssim_val is not none %}
+                            <p><strong>SSIM:</strong> {{ "%.4f"|format(ssim_val) }}</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                {% if psnr is not none %}
+                <p><strong>PSNR:</strong> {{ "%.2f"|format(psnr) }} dB</p>
+                {% endif %}
+                {% if ssim is not none %}
+                <p><strong>SSIM:</strong> {{ "%.4f"|format(ssim) }}</p>
+                {% endif %}
             {% endif %}
         </div>
         {% endif %}
@@ -208,8 +281,8 @@
             </div>
         </div>
 
-        <div class="info-section" style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-radius: 5px; text-align: left;">
-            <h3 style="margin-top: 0;">About Image Quality Metrics</h3>
+        <div class="info-section">
+            <h3>About Image Quality Metrics</h3>
             <p><strong>PSNR (Peak Signal-to-Noise Ratio):</strong> Measures the ratio between the maximum possible power of a signal and the power of corrupting noise. Higher values indicate better quality (typically 30-50 dB is considered good).</p>
             <p><strong>SSIM (Structural Similarity Index Measure):</strong> Measures the similarity between two images, considering luminance, contrast, and structure. Values range from -1 to 1, where 1 indicates perfect similarity.</p>
         </div>

@@ -133,6 +133,20 @@
         body.dark-mode .btn {
             background-color: #45a049;
         }
+
+        .enhancement-note {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+        }
+
+        /* Dark mode for enhancement note */
+        body.dark-mode .enhancement-note {
+            background-color: #3a4f63;
+            color: #f0f0f0;
+        }
         body.dark-mode .btn:hover {
             background-color: #3d8b40;
         }
@@ -170,6 +184,15 @@
         body.dark-mode .tooltip .tooltiptext {
             background-color: #777;
         }
+
+        /* Dark mode for back link */
+        body.dark-mode .back-link {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .back-link a {
+            color: #4CAF50;
+        }
     </style>
 </head>
 <body>
@@ -186,37 +209,40 @@
         </div>
 
         <form method="post">
-            <h3>Choose an enhancement task:</h3>
+            <h3>Choose enhancement tasks (select one or more):</h3>
             <div class="task-options">
                 <label class="task-option">
                     <div class="task-title">Denoising <span class="tooltip">ℹ️<span class="tooltiptext">Remove noise from images while preserving details. Uses diffusion models for high-quality denoising.</span></span></div>
                     <div class="task-desc">Remove noise from images while preserving details</div>
-                    <input type="radio" name="task" value="denoising" required>
+                    <input type="checkbox" name="tasks" value="denoising">
                 </label>
 
                 <label class="task-option">
                     <div class="task-title">Super Resolution <span class="tooltip">ℹ️<span class="tooltiptext">Enhance image quality and increase resolution using transformer-based models.</span></span></div>
                     <div class="task-desc">Enhance image quality and increase resolution</div>
-                    <input type="radio" name="task" value="super_resolution">
+                    <input type="checkbox" name="tasks" value="super_resolution">
                 </label>
 
                 <label class="task-option">
                     <div class="task-title">Colorization <span class="tooltip">ℹ️<span class="tooltiptext">Add color to black and white images using neural networks trained on color mapping.</span></span></div>
                     <div class="task-desc">Add color to black and white images</div>
-                    <input type="radio" name="task" value="colorization">
+                    <input type="checkbox" name="tasks" value="colorization">
                 </label>
 
                 <label class="task-option">
                     <div class="task-title">Inpainting <span class="tooltip">ℹ️<span class="tooltiptext">Restore missing or damaged parts of images using advanced inpainting algorithms.</span></span></div>
                     <div class="task-desc">Restore missing or damaged parts of images</div>
-                    <input type="radio" name="task" value="inpainting">
+                    <input type="checkbox" name="tasks" value="inpainting">
                 </label>
             </div>
+            <div class="enhancement-note">
+                <p><strong>Note:</strong> Multiple enhancements will be applied in sequence. The order will be optimized for best results.</p>
+            </div>
 
-            <button type="submit" class="btn" id="enhance-btn">Apply Enhancement</button>
+            <button type="submit" class="btn" id="enhance-btn">Apply Selected Enhancements</button>
             <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
                 <div style="display: inline-block; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p>Processing your image, please wait...</p>
+                <p>Processing your image with selected enhancements, please wait...</p>
             </div>
         </form>
 
