@@ -9,6 +9,7 @@ class Completion:
         processed = [pipeline(patch, attention_mask) for patch, attention_mask in patches]
 
         generated_image = self.stitch_image(processed)
+        self.generated_image = generated_image  # make available to pipeline
         self.visualize(image, generated_image)
 
     def get_patches(self, image, input_shape):
@@ -17,15 +18,19 @@ class Completion:
 
         ideal_height = (height // h_step + 1) * h_step
         ideal_width = (width // w_step + 1) * w_step
-        padded_image = cv2.copyMakeBorder(image, 0, ideal_height - height, 0, ideal_width - width, cv2.BORDER_CONSTANT)
-        attention_mask = cv2.copyMakeBorder(np.ones((height, width)), 0, ideal_height - height, 0, ideal_width - width, cv2.BORDER_CONSTANT)
+        padded_image = cv2.copyMakeBorder(
+            image, 0, ideal_height - height, 0, ideal_width - width, cv2.BORDER_CONSTANT
+        )
+        attention_mask = cv2.copyMakeBorder(
+            np.ones((height, width)), 0, ideal_height - height, 0, ideal_width - width, cv2.BORDER_CONSTANT
+        )
 
-        h_indicies = [i * h_step for i in range(height // h_step + 1)]
-        w_indicies = [i * w_step for i in range(width // w_step + 1)]
-        self.x_hops = len(w_indicies)
+        h_indices = [i * h_step for i in range(height // h_step + 1)]
+        w_indices = [i * w_step for i in range(width // w_step + 1)]
+        self.x_hops = len(w_indices)
 
         out = []
-        for coords in  [(h_indicies[i], w_indicies[j]) for i in range(len(h_indicies)) for j in range(len(w_indicies))]:
+        for coords in [(h_indices[i], w_indices[j]) for i in range(len(h_indices)) for j in range(len(w_indices))]:
             x, y = coords
             image_patch = padded_image[x:x + w_step, y:y + h_step]
             mask_patch = attention_mask[x:x + w_step, y:y + h_step]
@@ -43,12 +48,11 @@ class Completion:
             for patch, mask in p_slice:
                 patch_row.append(patch)
                 mask_row.append(mask)
-            patch_pieces.append(np.concat(patch_row, axis=1))
-            mask_pieces.append(np.concat(mask_row, axis=1))
+            patch_pieces.append(np.concatenate(patch_row, axis=1))
+            mask_pieces.append(np.concatenate(mask_row, axis=1))
 
-
-        img = np.concat(patch_pieces)
-        mask = np.concat(mask_pieces)
+        img = np.concatenate(patch_pieces)
+        mask = np.concatenate(mask_pieces)
 
         crop_height = len(mask[mask[:, 0] >= 0.5])
         crop_width = np.where(mask[0] <= 0.5)[0][0]
@@ -68,13 +72,14 @@ class Completion:
         plt.title("processed")
         plt.show()
 
+
 if __name__ == "__main__":
     def pipeline(patch, attention_mask):
         patch = cv2.resize(patch, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
         attention_mask = cv2.resize(attention_mask, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
         attention_mask = np.clip(attention_mask, 0, 1)
         return patch, attention_mask
-    
+
     image = cv2.imread("/home/poppop/class/Week 7/fa25-aai521-group1/data/scaled/0006_x16.png")
     input_shape = (100, 100)
     output_shape = (300, 300)
