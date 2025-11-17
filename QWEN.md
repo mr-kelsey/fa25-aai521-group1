@@ -174,3 +174,9 @@ This branch (`joeldiev/workingbranch`) serves as a local working branch with spe
    - Regularly update this local branch with changes from main
    - Use `git stash` and `git stash pop` as needed when switching contexts
    - This branch should not be pushed to remote repository
+
+5. **Branch Creation Rule**:
+   - Never merge unrelated files (such as base documentation files) directly into feature branches
+   - Always create new feature branches from main for specific feature work
+   - Develop features on dedicated branches before merging to main
+   - This prevents file contamination and keeps feature branches focused

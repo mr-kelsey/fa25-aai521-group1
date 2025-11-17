@@ -161,47 +161,65 @@ def huggingface_denoise(image):
 
 def transformer_super_resolution(image):
     """
-    Apply transformer-based super resolution to the image.
-    
+    Apply transformer-based super resolution to the image using the new superres pipeline.
+
     Args:
         image (numpy.ndarray): Input image in OpenCV format (BGR)
-        
+
     Returns:
         numpy.ndarray: Upscaled image in OpenCV format (BGR)
     """
-    # Load the model
-    model = model_manager.get_model("super_resolution")
-    
-    if model is None:
-        # Fallback to basic upscaling if model loading failed
+    # Try to use the enhanced super-resolution pipeline if available
+    try:
+        from src.superres.single_image import enhance_image
+        from src.superres.model_utils import load_ldm_model, superresolve_image
+        from PIL import Image
+        import tempfile
+        import os
+        import numpy as np
+
+        # Create a temporary file to pass to the pipeline
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            # Convert the image from OpenCV (BGR) to PIL (RGB) and save to temp file
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb)
+            pil_image.save(tmp_file.name)
+            temp_path = tmp_file.name
+
+        try:
+            # Use the superres pipeline with LDM method for super resolution
+            _, enhanced_img = enhance_image(
+                image_path=temp_path,
+                method="ldm",  # Use Latent Diffusion Model
+                model_id="CompVis/ldm-super-resolution-4x-openimages",  # Default model
+                visualize=False  # Don't visualize during processing
+            )
+
+            # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
+            enhanced_np = np.array(enhanced_img)
+            enhanced_cv = cv2.cvtColor(enhanced_np, cv2.COLOR_RGB2BGR)
+
+            return enhanced_cv
+
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_path)
+
+    except ImportError as e:
+        print(f"Warning: Could not import super-resolution pipeline: {e}")
+        print("Falling back to basic upscaling")
+
+    except Exception as e:
+        print(f"Error using advanced super resolution pipeline: {e}")
+        print("Falling back to basic upscaling")
+
+    # Fallback to basic upscaling if pipeline fails or is not available
+    if cv2 is not None:
         height, width = image.shape[:2]
         return cv2.resize(image, (width*2, height*2), interpolation=cv2.INTER_CUBIC)
-    
-    # Convert OpenCV image (HWC, BGR) to PIL (HWC, RGB)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image_rgb)
-    
-    # Super resolution using Real-ESRGAN
-    # Convert PIL image to tensor
-    img_tensor = transforms.ToTensor()(pil_image).unsqueeze(0).to(model.device)
-    
-    # Normalize the image
-    img_tensor = img_tensor * 2.0 - 1.0  # Normalize to [-1, 1]
-    
-    # Perform super resolution
-    with torch.no_grad():
-        output = model(img_tensor)
-    
-    # Denormalize
-    output = (output + 1.0) / 2.0  # Convert back to [0, 1]
-    
-    # Convert tensor to numpy array
-    output = output.squeeze().clamp(0, 1).permute(1, 2, 0).cpu().numpy()
-    
-    # Convert back to OpenCV format (RGB to BGR)
-    output_cv = cv2.cvtColor((output * 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
-    
-    return output_cv
+    else:
+        # If cv2 is not available, return the original image unchanged
+        return image.copy()
 
 
 def neural_colorization(image):
