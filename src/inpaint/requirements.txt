@@ -1,0 +1,18 @@
+# Core image handling
+Pillow==10.0.0
+opencv-python==4.8.1.78
+numpy==1.26.0
+
+# Hugging Face Diffusers and Transformers
+diffusers==0.25.0
+transformers==4.34.0
+accelerate==0.23.0
+huggingface-hub==0.19.0
+
+# Visualization
+matplotlib==3.8.0
+
+# Torch stack (must be ≥ 2.6 due to CVE-2025-32434)
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0

@@ -1,0 +1,25 @@
+Introduced new super-resolution pipeline package and clean up of legacy files
+
+- Added new modules:
+  • src/superres/ (model_utils.py, single_image.py, viz_utils.py, __init__.py)
+  • superres_pipeline.py (CLI entry point)
+  • notebooks/__init__.py
+  • notebook_integration.md (integration notes)
+
+- Updated existing modules:
+  • notebooks/helper/completion.py (fixed indentation, added self.generated_image, replaced np.concat)
+  • notebooks/helper/__init__.py (cleaned imports)
+  • requirements.txt (pinned dependencies for reproducibility)
+
+- Removed obsolete files:
+  • colab_test.txt
+  • notebooks/superres/README.md
+  • notebooks/superres/evaluation.ipynb
+  • outputs/superres/sample_001_output.png
+
+- Documentation improvements:
+  • Added comprehensive docstrings and inline comments across new modules
+  • Expanded README.md with Quick Comparison table and pipeline flow diagrams
+  • Clarified save-only vs visualize behavior in CLI
+
+Overall: established a new modular pipeline structure, removed outdated artifacts, stabilized imports, and improved clarity for team onboarding.
