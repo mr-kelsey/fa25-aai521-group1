@@ -1,14 +1,8 @@
-"""Single-image denoising pipeline.
-
-Loads a noisy image, runs a Stable Diffusion img2img denoising model,
-optionally saves and visualizes the result.
-"""
+"""Single-image denoising pipeline."""
 
 from pathlib import Path
 from typing import Optional, Tuple
 
-import cv2
-import numpy as np
 from PIL import Image
 
 from .model_utils import load_denoise_model, run_denoising
@@ -21,40 +15,15 @@ def _load_image_pil(path: str) -> Image.Image:
 
 def denoise_image(
     image_path: str,
-    model_id: str = "runwayml/stable-diffusion-v1-5",
+    model_id: str = None,
     save_to: Optional[str] = None,
     visualize: bool = False,
-    prompt: str = "high quality clean photo, detailed, sharp",
-    strength: float = 0.4,
-    guidance_scale: float = 7.5,
-    num_inference_steps: int = 30,
 ) -> Tuple[Image.Image, Image.Image]:
-    """Denoise a single image using a Stable Diffusion img2img pipeline.
-
-    Args:
-        image_path: Path to noisy input image.
-        model_id: Hugging Face model id for the img2img pipeline.
-        save_to: Base path to save outputs.
-        visualize: Show before/after comparison.
-        prompt: Optional text prompt to guide denoising.
-        strength: Img2img strength parameter.
-        guidance_scale: Guidance scale for classifier-free guidance.
-        num_inference_steps: Number of diffusion steps.
-
-    Returns:
-        (noisy_image_pil, denoised_image_pil)
-    """
+    """Denoise a single image and optionally save/visualize the result."""
     noisy_pil = _load_image_pil(image_path)
 
-    pipe = load_denoise_model(model_id=model_id)
-    denoised_pil = run_denoising(
-        pipe,
-        image=noisy_pil,
-        prompt=prompt,
-        strength=strength,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_inference_steps,
-    )
+    model = load_denoise_model(model_id=model_id)
+    denoised_pil = run_denoising(model, image=noisy_pil)
 
     if save_to:
         base = Path(save_to)

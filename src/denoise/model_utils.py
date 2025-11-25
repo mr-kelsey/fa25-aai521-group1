@@ -1,34 +1,18 @@
-"""Utilities for loading and running a Stable Diffusion img2img pipeline for denoising."""
+"""BM3D-based image denoiser."""
 
 from typing import Optional
 
-import torch
-from diffusers import StableDiffusionImg2ImgPipeline
 from PIL import Image
+import numpy as np
+from bm3d import bm3d
 
 
-def load_denoise_model(model_id: str = "runwayml/stable-diffusion-v1-5") -> StableDiffusionImg2ImgPipeline:
-    """Load Stable Diffusion img2img pipeline for denoising with appropriate device/dtype."""
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.float16 if device == "cuda" else torch.float32
-    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(model_id, torch_dtype=dtype)
-    return pipe.to(device)
+def load_denoise_model(model_id: Optional[str] = None):
+    return "bm3d"
 
 
-def run_denoising(
-    pipe: StableDiffusionImg2ImgPipeline,
-    image: Image.Image,
-    prompt: str = "high quality clean photo, detailed, sharp",
-    strength: float = 0.4,
-    guidance_scale: float = 7.5,
-    num_inference_steps: int = 30,
-):
-    """Run denoising given a PIL image and return the denoised PIL image."""
-    result = pipe(
-        prompt=prompt,
-        image=image,
-        strength=strength,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_inference_steps,
-    )
-    return result.images[0]
+def run_denoising(model, image: Image.Image) -> Image.Image:
+    img = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+    denoised = bm3d(img, sigma_psd=0.20)
+    out = (denoised * 255.0).clip(0, 255).astype("uint8")
+    return Image.fromarray(out)
