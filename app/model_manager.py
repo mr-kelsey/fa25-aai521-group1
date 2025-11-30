@@ -6,11 +6,16 @@ used in the image enhancement application, including caching functionality
 to avoid reloading models unnecessarily.
 """
 
+import sys
+import os
+# Add the project root directory to the Python path to allow imports from src
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 import torch
 from diffusers import StableDiffusionInpaintPipeline
 from transformers import pipeline
 import torchvision.transforms as transforms
-import os
 from PIL import Image, ImageDraw
 import cv2
 import numpy as np
@@ -21,14 +26,28 @@ class ModelManager:
     """
     Unified model manager for loading and caching all AI models used in the application.
     """
-    
+
     def __init__(self):
         """
         Initialize the model manager with all supported models.
         """
         self.models = {}
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        # Use CUDA if available, but check for compatibility
+        if torch.cuda.is_available():
+            # Check if the GPU is compatible with the current PyTorch installation
+            try:
+                # Try to get capabilities to check compatibility
+                self.device = torch.cuda.current_device()
+                self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+            except:
+                # If there are compatibility issues, fall back to CPU
+                self.device = "cpu"
+                self.torch_dtype = torch.float32
+        else:
+            self.device = "cpu"
+            self.torch_dtype = torch.float32
+
+        print(f"ModelManager: Using device {self.device}, dtype {self.torch_dtype}")
 
     def load_model(self, model_name):
         """
@@ -118,45 +137,60 @@ model_manager = ModelManager()
 
 def huggingface_denoise(image):
     """
-    Apply denoising using Hugging Face diffusion model.
-    
+    Apply denoising using Hugging Face diffusion model via the new pipeline.
+
     Args:
         image (numpy.ndarray): Input image in OpenCV format (BGR)
-        
+
     Returns:
         numpy.ndarray: Denoised image in OpenCV format (BGR)
     """
-    # Convert OpenCV image (BGR) to PIL (RGB)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image_rgb)
-    
-    # Create a mask for the entire image (we want to denoise everything)
-    mask = Image.new('L', pil_image.size, 255)  # White mask means denoise everything
-    
-    # Load the model
-    model = model_manager.get_model("denoising")
-    if model is None:
-        # Fallback to basic Gaussian blur if model loading failed
+    try:
+        from src.denoise.single_image import denoise_image
+        import tempfile
+        import os
+
+        # Create a temporary file to pass to the pipeline
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            # Convert the image from OpenCV (BGR) to PIL (RGB) and save to temp file
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb)
+            pil_image.save(tmp_file.name)
+            temp_path = tmp_file.name
+
+        try:
+            # Use the new denoise pipeline with optimized parameters
+            noisy_pil, denoised_pil = denoise_image(
+                image_path=temp_path,
+                model_id="runwayml/stable-diffusion-v1-5",
+                visualize=False,  # Don't visualize during processing
+                strength=0.4,
+                guidance_scale=7.5,
+                num_inference_steps=20  # Reduced steps for faster processing
+            )
+
+            # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
+            denoised_np = np.array(denoised_pil)
+            denoised_cv = cv2.cvtColor(denoised_np, cv2.COLOR_RGB2BGR)
+
+            # Ensure the denoised image has the same dimensions as the input
+            if denoised_cv.shape != image.shape:
+                denoised_cv = cv2.resize(denoised_cv, (image.shape[1], image.shape[0]))
+
+            return denoised_cv
+
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_path)
+
+    except ImportError as e:
+        print(f"Warning: Could not import denoising pipeline: {e}")
+        # Fallback to basic Gaussian blur
         return cv2.GaussianBlur(image, (5, 5), 0)
-    
-    # Perform denoising/inpainting
-    denoised_pil = model(
-        prompt="clean, clear, high quality image",
-        image=pil_image,
-        mask_image=mask,
-        num_inference_steps=20,
-        strength=0.75
-    ).images[0]
-    
-    # Convert back to OpenCV format (RGB to BGR)
-    denoised_np = np.array(denoised_pil)
-    denoised_cv = cv2.cvtColor(denoised_np, cv2.COLOR_RGB2BGR)
-    
-    # Ensure the denoised image has the same dimensions as the input
-    if denoised_cv.shape != image.shape:
-        denoised_cv = cv2.resize(denoised_cv, (image.shape[1], image.shape[0]))
-    
-    return denoised_cv
+    except Exception as e:
+        print(f"Error using denoising pipeline: {e}")
+        # Fallback to basic Gaussian blur
+        return cv2.GaussianBlur(image, (5, 5), 0)
 
 
 def transformer_super_resolution(image):
@@ -169,14 +203,10 @@ def transformer_super_resolution(image):
     Returns:
         numpy.ndarray: Upscaled image in OpenCV format (BGR)
     """
-    # Try to use the enhanced super-resolution pipeline if available
     try:
         from src.superres.single_image import enhance_image
-        from src.superres.model_utils import load_ldm_model, superresolve_image
-        from PIL import Image
         import tempfile
         import os
-        import numpy as np
 
         # Create a temporary file to pass to the pipeline
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
@@ -187,7 +217,7 @@ def transformer_super_resolution(image):
             temp_path = tmp_file.name
 
         try:
-            # Use the superres pipeline with LDM method for super resolution
+            # Use the new superres pipeline with LDM method for super resolution
             _, enhanced_img = enhance_image(
                 image_path=temp_path,
                 method="ldm",  # Use Latent Diffusion Model
@@ -206,162 +236,118 @@ def transformer_super_resolution(image):
             os.unlink(temp_path)
 
     except ImportError as e:
-        print(f"Warning: Could not import super-resolution pipeline: {e}")
-        print("Falling back to basic upscaling")
-
+        print(f"Error: Could not import super-resolution pipeline: {e}")
+        raise
     except Exception as e:
-        print(f"Error using advanced super resolution pipeline: {e}")
-        print("Falling back to basic upscaling")
-
-    # Fallback to basic upscaling if pipeline fails or is not available
-    if cv2 is not None:
-        height, width = image.shape[:2]
-        return cv2.resize(image, (width*2, height*2), interpolation=cv2.INTER_CUBIC)
-    else:
-        # If cv2 is not available, return the original image unchanged
-        return image.copy()
+        print(f"Error using super resolution pipeline: {e}")
+        raise
 
 
 def neural_colorization(image):
     """
-    Apply neural network-based colorization to the grayscale image.
-    
+    Apply neural network-based colorization using the new colorization pipeline.
+
     Args:
         image (numpy.ndarray): Input image in OpenCV format (BGR)
-        
+
     Returns:
         numpy.ndarray: Colorized image in OpenCV format (BGR)
     """
-    # Load the model
-    model = model_manager.get_model("colorization")
-    
-    if model is None:
-        # Fallback to basic grayscale if model loading failed
-        gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        return cv2.cvtColor(gray_img, cv2.COLOR_GRAY2BGR)
-    
-    # Convert OpenCV image (HWC, BGR) to PIL (HWC, RGB)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image_rgb)
-    
-    # Resize image to model's expected size (most colorization models expect 224x224)
-    pil_image = pil_image.resize((224, 224))
-    
-    # Convert to LAB color space
-    img_lab = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2LAB)
-    img_l = img_lab[:, :, 0]  # Extract L channel
-    
-    # Normalize the L channel to [0, 1] and then to [-1, 1] as expected by many models
-    img_l_norm = (img_l.astype(np.float32) / 255.0) * 2.0 - 1.0
-    
-    # Create tensor from L channel
-    img_tensor = torch.tensor(img_l_norm).unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
-    
-    # Move to device where model is
-    device = next(model.parameters()).device
-    img_tensor = img_tensor.to(device)
-    
-    # Run the model to get AB channels
-    with torch.no_grad():
-        output_ab = model(img_tensor)
-    
-    # Convert back to numpy and scale
-    output_ab = output_ab.squeeze().cpu().numpy()
-    
-    # Scale back AB channels from [-1, 1] to [0, 255] range
-    output_ab = (output_ab + 1) * 127.5
-    output_ab = np.clip(output_ab, 0, 255)
-    
-    # Convert original L back to [0, 255] range
-    img_l_rescaled = (img_l_norm + 1) * 127.5
-    img_l_rescaled = np.clip(img_l_rescaled, 0, 255)
-    
-    # Stack L with AB to get full LAB image
-    img_lab_resized = np.zeros((224, 224, 3), dtype=np.uint8)
-    img_lab_resized[:, :, 0] = img_l_rescaled.astype(np.uint8)  # L channel
-    img_lab_resized[:, :, 1:] = output_ab.transpose(1, 2, 0).astype(np.uint8)  # AB channels
-    
-    # Convert LAB back to RGB
-    colorized_rgb = cv2.cvtColor(img_lab_resized, cv2.COLOR_LAB2RGB)
-    
-    # Convert back to BGR for consistency with the rest of the code
-    colorized_bgr = cv2.cvtColor(colorized_rgb, cv2.COLOR_RGB2BGR)
-    
-    # Resize back to original size
-    original_height, original_width = image.shape[:2]
-    colorized_bgr = cv2.resize(colorized_bgr, (original_width, original_height), interpolation=cv2.INTER_CUBIC)
-    
-    return colorized_bgr
+    try:
+        from src.colorize.single_image import colorize_image
+        import tempfile
+        import os
+
+        # Create a temporary file to pass to the pipeline
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            # Convert the image from OpenCV (BGR) to PIL (RGB) and save to temp file
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb)
+            pil_image.save(tmp_file.name)
+            temp_path = tmp_file.name
+
+        try:
+            # Use the new colorization pipeline
+            grey_pil, colorized_pil, _ = colorize_image(
+                grey_image_path=temp_path,
+                visualize=False,  # Don't visualize during processing
+                model_id="runwayml/stable-diffusion-v1-5",
+                prompt="colorized photo, realistic colors, detailed, sharp",
+                strength=0.5  # Reduced strength for faster processing
+            )
+
+            # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
+            colorized_np = np.array(colorized_pil)
+            colorized_cv = cv2.cvtColor(colorized_np, cv2.COLOR_RGB2BGR)
+
+            # Ensure the colorized image has the same dimensions as the input
+            if colorized_cv.shape != image.shape:
+                colorized_cv = cv2.resize(colorized_cv, (image.shape[1], image.shape[0]))
+
+            return colorized_cv
+
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_path)
+
+    except ImportError as e:
+        print(f"Error: Could not import colorization pipeline: {e}")
+        raise
+    except Exception as e:
+        print(f"Error using colorization pipeline: {e}")
+        raise
 
 
 def neural_inpainting(image):
     """
-    Apply neural network-based inpainting to restore damaged regions in the image.
-    
+    Apply neural network-based inpainting using the new inpainting pipeline.
+
     Args:
         image (numpy.ndarray): Input image in OpenCV format (BGR)
-        
+
     Returns:
         numpy.ndarray: Inpainted image in OpenCV format (BGR)
     """
-    # Load the model
-    model = model_manager.get_model("inpainting")
-    
-    if model is None:
-        # Fallback to basic inpainting if model loading failed
-        # Create a mask with some region removed
-        mask = np.zeros(image.shape[:2], dtype=np.uint8)
-        h, w = image.shape[:2]
-        cv2.rectangle(mask, (w//4, h//4), (3*w//4, 3*h//4), 255, -1)
-
-        # Simply fill the masked region with average of the surroundings
-        result = image.copy()
-        mean_color = np.mean(image[mask==0], axis=0)  # Average of non-masked pixels
-        result[mask==255] = mean_color  # Fill masked region with average
-        
-        return result
-    
-    # Convert OpenCV image (BGR) to PIL (RGB)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image_rgb)
-    
-    # Create a mask for the region to inpaint
-    mask = Image.new('L', pil_image.size, 0)  # Black background
-    # Create a white rectangle in the center to indicate what to inpaint 
-    mask_draw = Image.new('L', pil_image.size, 0)
-    draw = ImageDraw.Draw(mask_draw)
-    w, h = pil_image.size
-    draw.rectangle([w//4, h//4, 3*w//4, 3*h//4], fill=255)
-    mask = mask_draw
-
-    # Perform inpainting
     try:
-        inpainted_pil = model(
-            prompt="complete, restored, clean image",
-            image=pil_image,
-            mask_image=mask,
-            num_inference_steps=20,
-            strength=0.75
-        ).images[0]
-        
-        # Convert back to OpenCV format (RGB to BGR)
-        inpainted_np = np.array(inpainted_pil)
-        inpainted_cv = cv2.cvtColor(inpainted_np, cv2.COLOR_RGB2BGR)
-        
-        # Ensure the inpainted image has the same dimensions as the input
-        if inpainted_cv.shape != image.shape:
-            inpainted_cv = cv2.resize(inpainted_cv, (image.shape[1], image.shape[0]))
-        
-        return inpainted_cv
+        from src.inpaint.single_image import inpaint_image
+        import tempfile
+        import os
+
+        # Create a temporary file to pass to the pipeline
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            # Convert the image from OpenCV (BGR) to PIL (RGB) and save to temp file
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb)
+            pil_image.save(tmp_file.name)
+            temp_path = tmp_file.name
+
+        try:
+            # Use the new inpainting pipeline
+            orig_pil, inpainted_pil = inpaint_image(
+                image_path=temp_path,
+                method="sd",  # Use Stable Diffusion Inpainting
+                model_id="runwayml/stable-diffusion-inpainting",
+                visualize=False,  # Don't visualize during processing
+                prompt="complete, restored, clean image"
+            )
+
+            # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
+            inpainted_np = np.array(inpainted_pil)
+            inpainted_cv = cv2.cvtColor(inpainted_np, cv2.COLOR_RGB2BGR)
+
+            # Ensure the inpainted image has the same dimensions as the input
+            if inpainted_cv.shape != image.shape:
+                inpainted_cv = cv2.resize(inpainted_cv, (image.shape[1], image.shape[0]))
+
+            return inpainted_cv
+
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_path)
+
+    except ImportError as e:
+        print(f"Error: Could not import inpainting pipeline: {e}")
+        raise
     except Exception as e:
-        print(f"Inpainting process failed: {e}")
-        # Fallback to basic inpainting
-        mask = np.zeros(image.shape[:2], dtype=np.uint8)
-        h, w = image.shape[:2]
-        cv2.rectangle(mask, (w//4, h//4), (3*w//4, 3*h//4), 255, -1)
-        
-        result = image.copy()
-        mean_color = np.mean(image[mask==0], axis=0)
-        result[mask==255] = mean_color
-        
-        return result
+        print(f"Error using inpainting pipeline: {e}")
+        raise
