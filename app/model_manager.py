@@ -26,14 +26,28 @@ class ModelManager:
     """
     Unified model manager for loading and caching all AI models used in the application.
     """
-    
+
     def __init__(self):
         """
         Initialize the model manager with all supported models.
         """
         self.models = {}
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        # Use CUDA if available, but check for compatibility
+        if torch.cuda.is_available():
+            # Check if the GPU is compatible with the current PyTorch installation
+            try:
+                # Try to get capabilities to check compatibility
+                self.device = torch.cuda.current_device()
+                self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+            except:
+                # If there are compatibility issues, fall back to CPU
+                self.device = "cpu"
+                self.torch_dtype = torch.float32
+        else:
+            self.device = "cpu"
+            self.torch_dtype = torch.float32
+
+        print(f"ModelManager: Using device {self.device}, dtype {self.torch_dtype}")
 
     def load_model(self, model_name):
         """
@@ -145,11 +159,14 @@ def huggingface_denoise(image):
             temp_path = tmp_file.name
 
         try:
-            # Use the new denoise pipeline
+            # Use the new denoise pipeline with optimized parameters
             noisy_pil, denoised_pil = denoise_image(
                 image_path=temp_path,
                 model_id="runwayml/stable-diffusion-v1-5",
-                visualize=False  # Don't visualize during processing
+                visualize=False,  # Don't visualize during processing
+                strength=0.4,
+                guidance_scale=7.5,
+                num_inference_steps=20  # Reduced steps for faster processing
             )
 
             # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
@@ -255,7 +272,8 @@ def neural_colorization(image):
                 grey_image_path=temp_path,
                 visualize=False,  # Don't visualize during processing
                 model_id="runwayml/stable-diffusion-v1-5",
-                prompt="colorized photo, realistic colors, detailed, sharp"
+                prompt="colorized photo, realistic colors, detailed, sharp",
+                strength=0.5  # Reduced strength for faster processing
             )
 
             # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
