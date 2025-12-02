@@ -1,72 +1,52 @@
-"""Single-image colorization pipeline using a Stable Diffusion img2img model.
-
-Loads a grayscale image from the `data/grey` folder, runs a Stable Diffusion
-img2img colorization step, optionally saves and visualizes the result.
-"""
+# src/colorize/single_image.py
 
 from pathlib import Path
-from typing import Optional, Tuple
-
 from PIL import Image
-
 from .model_utils import load_colorize_model, run_colorization
 from .viz_utils import show_before_after
 
-
-def _load_image_pil(path: str) -> Image.Image:
-    return Image.open(path).convert("RGB")
-
-
 def colorize_image(
     grey_image_path: str,
-    truth_image_path: Optional[str] = None,
-    save_to: Optional[str] = None,
+    truth_image_path: str = None,
+    save_to: str = None,
     visualize: bool = False,
-    model_id: str = "runwayml/stable-diffusion-v1-5",
-    prompt: str = "colorized photo, realistic colors, detailed, sharp",
-    strength: float = 0.6,
-    guidance_scale: float = 7.5,
-    num_inference_steps: int = 30,
-) -> Tuple[Image.Image, Image.Image, Optional[Image.Image]]:
-    """Colorize a single image using a Stable Diffusion img2img pipeline.
-
-    Args:
-        grey_image_path: Path to grayscale input image.
-        truth_image_path: Optional path to corresponding ground-truth color image
-            used only for visualization/comparison.
-        save_to: Base path to save outputs.
-        visualize: Show before/after (and optionally ground truth) comparison.
-        model_id: Hugging Face model id for the img2img pipeline.
-        prompt: Text prompt guiding colorization.
-        strength: Img2img strength.
-        guidance_scale: Guidance scale for classifier-free guidance.
-        num_inference_steps: Number of diffusion steps.
-
-    Returns:
-        (grey_pil, colorized_pil, truth_pil or None)
+    model_id: str = "caffe",
+):
     """
-    grey_pil = _load_image_pil(grey_image_path)
-    truth_pil = _load_image_pil(truth_image_path) if truth_image_path else None
+    Loads a grayscale image, colorizes it using the specified model,
+    and optionally saves and visualizes the result.
+    """
+    # Load the model using the centralized loader
+    model = load_colorize_model(model_id)
 
-    pipe = load_colorize_model(model_id=model_id)
-    colorized_pil = run_colorization(
-        pipe,
-        image=grey_pil,
-        prompt=prompt,
-        strength=strength,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_inference_steps,
-    )
+    # Open the grayscale image
+    grey_pil = Image.open(grey_image_path).convert("RGB")
 
+    # Run colorization
+    colorized_pil = run_colorization(model, grey_pil)
+
+    # Load ground truth if provided
+    truth_pil = Image.open(truth_image_path).convert("RGB") if truth_image_path else None
+
+    # Save outputs if a path is specified
     if save_to:
         base = Path(save_to)
         base.parent.mkdir(parents=True, exist_ok=True)
-        grey_pil.save(base.with_name(base.stem + "_input.png"))
-        colorized_pil.save(base.with_name(base.stem + "_colorized.png"))
-        if truth_pil is not None:
-            truth_pil.save(base.with_name(base.stem + "_truth.png"))
+        
+        # Save a copy of the input image for comparison
+        input_save_path = base.with_name(f"{base.stem}_input.png")
+        grey_pil.save(input_save_path)
+        
+        # Save the main colorized output
+        colorized_pil.save(save_to)
 
+        # Save ground truth if it exists
+        if truth_pil:
+            truth_save_path = base.with_name(f"{base.stem}_truth.png")
+            truth_pil.save(truth_save_path)
+
+    # Visualize if requested
     if visualize:
-        show_before_after(grey_pil, colorized_pil, title_left="Grayscale", title_right="Colorized")
+        show_before_after(grey_pil, colorized_pil, truth_pil)
 
     return grey_pil, colorized_pil, truth_pil
