@@ -1,7 +1,7 @@
 """Command-line entry point for the denoising pipeline.
 
-Usage example:
-    python denoise_pipeline.py --image data/noisy/0006_n.png --save-to outputs/0006_denoised.png
+This pipeline uses a UNet2DModel-based denoiser (default:
+`skytnt/anime-denoiser`) via Diffusers to perform direct image denoising.
 """
 
 import argparse
@@ -13,22 +13,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run image denoising pipeline")
 
     parser.add_argument("--image", type=str, required=True, help="Path to noisy input image")
-    parser.add_argument("--model-id", type=str,
-                        default="runwayml/stable-diffusion-v1-5",
-                        help="Hugging Face model ID for denoising (img2img)")
-    parser.add_argument("--save-to", type=str, default="outputs/denoised_result.png",
-                        help="Base path to save enhanced image")
+    parser.add_argument(
+        "--model-id",
+        type=str,
+        default=None,
+        help="Hugging Face model ID for denoising (Diffusers UNet2DModel)",
+    )
+    parser.add_argument(
+        "--save-to",
+        type=str,
+        default="outputs/denoised_result.png",
+        help="Base path to save enhanced image",
+    )
     parser.add_argument("--visualize", action="store_true", help="Show before/after comparison")
     parser.add_argument("--save-only", action="store_true", help="Save output without visualization")
-    parser.add_argument("--prompt", type=str,
-                        default="high quality clean photo, detailed, sharp",
-                        help="Optional text prompt to guide denoising")
-    parser.add_argument("--strength", type=float, default=0.4,
-                        help="Img2img strength controlling how much the model changes the input")
-    parser.add_argument("--guidance-scale", type=float, default=7.5,
-                        help="Guidance scale for classifier-free guidance")
-    parser.add_argument("--num-inference-steps", type=int, default=30,
-                        help="Number of diffusion steps")
 
     args = parser.parse_args()
     visualize = args.visualize and not args.save_only
@@ -38,10 +36,6 @@ def main() -> None:
         model_id=args.model_id,
         save_to=args.save_to,
         visualize=visualize,
-        prompt=args.prompt,
-        strength=args.strength,
-        guidance_scale=args.guidance_scale,
-        num_inference_steps=args.num_inference_steps,
     )
 
     print("Denoising complete.")
