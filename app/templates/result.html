@@ -281,11 +281,13 @@
             </div>
         </div>
 
+        {% if psnr is not none or ssim is not none or all_metrics %}
         <div class="info-section">
             <h3>About Image Quality Metrics</h3>
             <p><strong>PSNR (Peak Signal-to-Noise Ratio):</strong> Measures the ratio between the maximum possible power of a signal and the power of corrupting noise. Higher values indicate better quality (typically 30-50 dB is considered good).</p>
             <p><strong>SSIM (Structural Similarity Index Measure):</strong> Measures the similarity between two images, considering luminance, contrast, and structure. Values range from -1 to 1, where 1 indicates perfect similarity.</p>
         </div>
+        {% endif %}
     </div>
 
     <script>
