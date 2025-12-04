@@ -162,7 +162,7 @@ def huggingface_denoise(image):
             # Use the new denoise pipeline with optimized parameters
             noisy_pil, denoised_pil = denoise_image(
                 image_path=temp_path,
-                model_id="runwayml/stable-diffusion-v1-5",
+#                model_id="runwayml/stable-diffusion-v1-5",
                 visualize=False,  # Don't visualize during processing
                 strength=0.4,
                 guidance_scale=7.5,
@@ -267,13 +267,11 @@ def neural_colorization(image):
             temp_path = tmp_file.name
 
         try:
-            # Use the new colorization pipeline
+            # Use the new colorization pipeline with Caffe model
             grey_pil, colorized_pil, _ = colorize_image(
                 grey_image_path=temp_path,
                 visualize=False,  # Don't visualize during processing
-                model_id="runwayml/stable-diffusion-v1-5",
-                prompt="colorized photo, realistic colors, detailed, sharp",
-                strength=0.5  # Reduced strength for faster processing
+                model_id="caffe"
             )
 
             # Convert the result (PIL Image) back to OpenCV format (RGB to BGR)
@@ -289,6 +287,13 @@ def neural_colorization(image):
         finally:
             # Clean up temporary file
             os.unlink(temp_path)
+
+    except ImportError as e:
+        print(f"Error: Could not import colorization pipeline: {e}")
+        raise
+    except Exception as e:
+        print(f"Error using colorization pipeline: {e}")
+        raise
 
     except ImportError as e:
         print(f"Error: Could not import colorization pipeline: {e}")
