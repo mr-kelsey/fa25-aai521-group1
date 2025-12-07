@@ -2,7 +2,7 @@
 
 This project is a part of the AAI-521 course in the Applied Artificial Intelligence Program at the University of San Diego (USD).
 
--- Project Status: [**Active**, Completed]
+-- Project Status: [Active, **Completed**]
 
 ## Overview
 
@@ -51,14 +51,10 @@ Our application addresses the growing need for high-quality image processing in 
 
 ## Partner(s)/Contributor(s)
 
-* Atul Aneja
-* [https://github.com/AtulAneja](https://github.com/AtulAneja)
-* Gregory Bauer
-* [https://github.com/gbauer-at-sandiego-edu](https://github.com/gbauer-at-sandiego-edu)
-* Johnathan Kelsey
-* [https://github.com/mr-kelsey](https://github.com/mr-kelsey)
-* Joel Dievendorf
-* [https://github.com/joeldiev](https://github.com/joeldiev)
+* [Atul Aneja](https://github.com/AtulAneja)
+* [Gregory Bauer](https://github.com/gbauer-at-sandiego-edu)
+* [Joel Dievendorf](https://github.com/joeldiev)
+* [Johnathan Kelsey](https://github.com/mr-kelsey)
 
 ## Methods Used
 * Inferential Statistics
@@ -135,4 +131,4 @@ jupyter notebook
 GNU GENERAL PUBLIC LICENSE Version 3
 
 ## Acknowledgments
-We thank our professor Dr. Sardari for their guidance and technical support throughout this project. Special thanks to the Hugging Face team for providing accessible state-of-the-art models, and the open-source community for the various libraries that made this project possible.
+A special thanks to both the Hugging Face team and the Caffe Model Zoo for providing accessible state-of-the-art models, and the open-source community for the various libraries that made this project possible.
